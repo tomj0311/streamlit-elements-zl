@@ -4,7 +4,6 @@ from streamlit import session_state
 from typing import Callable, Iterable, Mapping
 
 from streamlit_elements.core.exceptions import ElementsFrameError
-from streamlit_elements.core.callback import ElementsCallbackManager, ElementsCallback
 from streamlit_elements.core.element import Element
 from streamlit_elements.core.render import render_component
 
@@ -35,7 +34,9 @@ def new_frame(key):
         javascript = repr(frame)
 
         if javascript:
-            render_component(js=javascript, key=key, default="{}")
+            _comp = render_component(js=javascript, key=key, default=0)
+            session_state["id"] = _comp if _comp != 0 else "undefined"
+            print(session_state["id"])
 
     finally:
         del session_state[ELEMENTS_FRAME_KEY]
@@ -49,10 +50,14 @@ def new_element(module, element):
 
 
 class ElementsFrame:
-    __slots__ = ("_callback_manager", "_serialized", "_children", "_parents", "_key")
+    __slots__ = (
+        '_serialized',
+        '_children',
+        '_parents',
+        '_key'
+    )
 
     def __init__(self, key):
-        self._callback_manager = ElementsCallbackManager(key)
         self._serialized = set()
         self._children = []
         self._parents = []
@@ -76,10 +81,6 @@ class ElementsFrame:
         if isinstance(obj, Element):
             self._serialized.add(obj)
             return repr(obj)
-
-        elif isinstance(obj, (Callable, ElementsCallback)):
-            callback = self._callback_manager.register(obj)
-            return repr(callback)
 
         elif isinstance(obj, Mapping):
             items = (json.dumps(key) + ":" + self.serialize(value) for key, value in obj.items())
